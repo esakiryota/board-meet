@@ -39,7 +39,6 @@
 
 <body>
     <figure id="board">
-        <!-- <div id="zoom_in" style="left: 600px; position: absolute;"><i class="material-icons">zoom_in</i></div> -->
         <svg id="drawingCanvas" style="top: 10px; left: 100px; position: absolute; width: 90%; height: 90%;"
             class="z-depth-5"></svg>
         <div id="bottons" style="position: absolute; bottom: 50px; right: 50px;">
@@ -198,9 +197,6 @@
         </div>
     </div>
     <div id="selector"></div>
-    <div id="token"><%- token %></div>
-    <div id="user_name"><%- user_name %></div>
-    <div id="user"><%- user %></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
     <script>
         $(function () {
@@ -341,7 +337,7 @@
                 // these HTTP methods do not require CSRF protection
                 return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
             }
-            const roomName = document.getElementById('token').textContent;
+            const roomName = "<%- token %>"
 
 
 
@@ -355,7 +351,7 @@
 
             roomSocket = new WebSocket(
                 ws_or_wss
-                + 'localhost:8082'
+                + '18.183.195.124:8083'
                 + '/'
                 + roomName
                 + ''
@@ -424,7 +420,8 @@
                 console.error('socket closed unexpectedly');
             };
 
-            var user_name = document.getElementById('user_name').textContent;
+            // var user_name = document.getElementById('user_name').textContent;
+            var user_name = "<%- user_name %>";
             var pc_list = {};
             var dataChannelList = {};
             var remoteStream;
@@ -467,7 +464,7 @@
                     await gotStream(stream);
                     videoRoomSocket = await new WebSocket(
                         ws_or_wss
-                        + 'localhost:8082'
+                        + '18.183.195.124:8083'
                         + '/'
                         + roomName
                         + "room"
@@ -614,8 +611,6 @@
                         }
                         return
                     }
-
-                    console.log(data)
 
                     if (data.type === 'offer') {
                         console.log("offer data: ", data);
@@ -812,7 +807,7 @@
                     console.log('CHANNEL opened!!!');
                     //  logOnView("CHANNEL opened!!!", 4000, "blue")
                     logOnView("ボードのデータが共有されました", 4000, "blue")
-                    var user = JSON.parse(document.getElementById('user').textContent);
+                    var user = JSON.parse("<%- user %>");
                     var data = {
                         "type": "name",
                         "token": name,

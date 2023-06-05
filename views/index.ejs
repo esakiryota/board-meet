@@ -70,7 +70,7 @@
                       </div>
                       <div class="row">
                         <div class="col s12">
-                            キー: <span>{{token}}</span><br>
+                            キー: <span id="token"><%- token %></span><br>
                             <span>※ このキーをボード共有する人に送ってください</span><br>
                             <span>※ 同じボードを繰り返し使うには、このキーを保存して、ルームに参加でこのキーを入れてください。</span>
                         </div>
@@ -104,7 +104,6 @@
                     </div>
                     <div class="modal-footer">
                       <a href="#!" class="modal-close btn-flat">キャンセル</a>
-                      <!-- <a href="public_board/{{token}}" class="modal-close btn-flat" id="create_room">作成</a> -->
                       <div class="modal-close btn-flat" id="join_room">参加</div>
                     </div>
               </div>
@@ -120,7 +119,6 @@
             </div>
             </div>
             </main>
-            <div id="token">fhjaodifnawof</div>
 
           <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
           <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
@@ -132,8 +130,7 @@
     });
 
             document.getElementById("create_room").addEventListener('click', function() {
-          // var token = JSON.parse(document.getElementById('token').textContent);
-          var token = "dgakjdnkj"
+          var token = document.getElementById('token').textContent;
           var name = document.getElementById("name").value
           var url = `/board/${token}?name=${name}`
           window.location.href = url
@@ -141,8 +138,7 @@
 
       document.getElementById("join_room").addEventListener('click', function() {
           var name = document.getElementById("name_join").value
-          // var token = JSON.parse(document.getElementById('token').textContent);
-          var token = "dgakjdnkj"
+          var token = document.getElementById('token');
           var url = `/board/${token}?name=${name}`
           window.location.href = url
       })

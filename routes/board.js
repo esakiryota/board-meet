@@ -5,7 +5,8 @@ var router = express.Router();
 router.get('/:roomId', function(req, res, next) {
   var user = req.query;
   var user_name =  generateRandomString(15);
-  params = {"token": req.params.roomId, "user_name": user.name, "user": user, "image": ""}
+  params = {"token": req.params.roomId, "user_name": user_name, "user": user, "display_name": user.name, "image": ""}
+  console.log(params)
   res.render('board', params);
 });
 

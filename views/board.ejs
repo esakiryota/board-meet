@@ -51,6 +51,9 @@
             <a class='pointer-type btn-floating row tooltipped blue button' href='#' data-position="right"
                 data-delay="50" data-tooltip="ダウンロード" id="board_download"><i
                     class="material-icons">file_download</i></a>
+                    <a class='pointer-type btn-floating row tooltipped blue button' href='#' data-position="right"
+                    data-delay="50" data-tooltip="ブラウザに保存" id="board_save"><i
+                        class="material-icons">save</i></a>
         </div>
         <div id="controllers" class="row" style="position: absolute; top: 20px; right: 50px;">
             <span class='pointer-type col controller' id="zoom_in"><i class="material-icons">zoom_in</i></span>
@@ -180,7 +183,7 @@
         <div id="<%- user_name %>_box" style="position: relative;">
             <video id="localVideo" class="z-depth-5" autoplay muted playsinline></video>
             <div style="position: absolute; bottom: 6px; left: 0px; background-color: black; color: white;"
-                id="name_<%- user_name %>"><%- user_name %></div>
+                id="name_<%- user_name %>"><%- display_name %></div>
             <div style="position: absolute; bottom: 0px; right: 0px;">
                 <a class='' href='#' id="mic" style="color: white"><i class="material-icons">mic_off</i></a>
                 <a class='' href='#' id="switch_video" style="color: white"><i class="material-icons">videocam</i></a>
@@ -253,6 +256,8 @@
             browserDrawData = {};
             id = "";
             old_id = "";
+
+            console.log("drawingData", drawingData)
 
             function zoomAction() {
 
@@ -367,90 +372,109 @@
             }
 
             roomSocket = new WebSocket(
-                ws_or_wss
-                + '18.183.195.124:8083'
+                "wss://www.websocket-server.link:8083"
                 + '/'
                 + roomName
                 + ''
             );
 
+            function drawData(value) {
+                console.log(value)
+                var draw_type = value.type
+                var key = value.id;
+                switch (draw_type) {
+                    case "draw":
+                        var pathElm = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                        svgElm.append(pathElm);
+                        svgElm.find("path:last").attr({
+                            "id": key,
+                            "d": value.d,
+                            "fill": "none",
+                            "stroke": value.stroke,
+                            "stroke-width": value.strokeSize,
+                            "stroke-linecap": "round"
+                        });
+                        var transform = pathElm.transform.baseVal.createSVGTransformFromMatrix(SVGMatrixCreate())
+                        if (!pathElm.hasAttribute("transform")) {
+                            pathElm.transform.baseVal.appendItem(transform);
+                        }
+
+                        var Matrix = pathElm.transform.baseVal[0].matrix;
+                        Matrix.e = value.x;
+                        Matrix.f = value.y;
+                        break;
+                    case "image":
+                        var imageElm = document.createElementNS("http://www.w3.org/2000/svg", "image");
+                        imageElm.setAttribute("href", value.href);
+                        imageElm.setAttribute("id", value.id);
+                        imageElm.setAttribute("width", value.width);
+                        imageElm.setAttribute("height", value.height);
+                        imageElm.setAttribute("x", value.cx);
+                        imageElm.setAttribute("y", value.cy);
+                        svgElm.append(imageElm);
+                        var transform = imageElm.transform.baseVal.createSVGTransformFromMatrix(SVGMatrixCreate())
+                        if (!imageElm.hasAttribute("transform")) {
+                            imageElm.transform.baseVal.appendItem(transform);
+                        }
+
+                        // var Matrix = target.transform.matrix;
+                        var Matrix = imageElm.transform.baseVal[0].matrix;
+                        Matrix.e = value.x;
+                        Matrix.f = value.y;
+                        break;
+                    case "textBox":
+                        createTextBox(value.cx, value.cy, value.x, value.y, value.id, value.text);
+                        break;
+                    case "":
+                        svgElm.html("");
+                        break;
+                    default:
+                        console.log("no type");
+                }
+            }
+
             function defultDraw(data) {
                 for (const key in data) {
                     //初期データをjsonfileに書き込む用のデータに加える
                     if (data.hasOwnProperty(key)) {
-                    const value = data[key];
-                    var draw_type = value.type
-                    switch (draw_type) {
-                        case "draw":
-                            var pathElm = document.createElementNS("http://www.w3.org/2000/svg", "path");
-                            svgElm.append(pathElm);
-                            svgElm.find("path:last").attr({
-                                "id": key,
-                                "d": value.d,
-                                "fill": "none",
-                                "stroke": value.stroke,
-                                "stroke-width": value.strokeSize,
-                                "stroke-linecap": "round"
-                            });
-                            var transform = pathElm.transform.baseVal.createSVGTransformFromMatrix(SVGMatrixCreate())
-                            if (!pathElm.hasAttribute("transform")) {
-                                pathElm.transform.baseVal.appendItem(transform);
-                            }
+                        const value = data[key];
 
-                            var Matrix = pathElm.transform.baseVal[0].matrix;
-                            Matrix.e = value.x;
-                            Matrix.f = value.y;
-                            break;
-                        case "image":
-                            var imageElm = document.createElementNS("http://www.w3.org/2000/svg", "image");
-                            imageElm.setAttribute("href", value.href);
-                            imageElm.setAttribute("id", value.id);
-                            imageElm.setAttribute("width", value.width);
-                            imageElm.setAttribute("height", value.height);
-                            imageElm.setAttribute("x", value.cx);
-                            imageElm.setAttribute("y", value.cy);
-                            svgElm.append(imageElm);
-                            var transform = imageElm.transform.baseVal.createSVGTransformFromMatrix(SVGMatrixCreate())
-                            if (!imageElm.hasAttribute("transform")) {
-                                imageElm.transform.baseVal.appendItem(transform);
-                            }
-
-                            // var Matrix = target.transform.matrix;
-                            var Matrix = imageElm.transform.baseVal[0].matrix;
-                            Matrix.e = value.x;
-                            Matrix.f = value.y;
-                            break;
-                        case "textBox":
-                            createTextBox(value.cx, value.cy, value.x, value.y, value.id, value.text);
-                            break;
-                        case "":
-                            svgElm.html("");
-                            break;
-                        default:
-                            console.log("no type");
+                        drawData(value)
                     }
-                }
                 }
             }
 
             function loadRoom() {
-                // const apiUrl =
-                //     '/rooms/api/'
-                //     + roomName
-                //     + '/load'
-                // loadingData = ajax("dummy", apiUrl, "GET", defultDraw)
-                const sampleJson = JSON.parse(localStorage.getItem('sample'));
-                // console.log(sampleJson)
+                const sampleJson = JSON.parse(localStorage.getItem(roomName));
+                if (sampleJson !== null) {
+                    drawingData = sampleJson;
+                }
                 defultDraw(sampleJson)
             }
 
             loadRoom()
 
+            function adaptingData(data) {
+                console.log(drawingData)
+                for (const key_data in data) {
+                    var flag = false;
+                    for (const key_drawingData in drawingData) {
+                        if (key_data === key_drawingData) {
+                            flag = true;
+                        }
+                    }
+                    if (!flag) {
+                        console.log(data[key_data])
+                        drawingData[key_data] = data[key_data];
+                        drawData(data[key_data]);
+                    }
+                }
+            }
+
             roomSocket.onclose = function (e) {
                 console.error('socket closed unexpectedly');
             };
 
-            // var user_name = document.getElementById('user_name').textContent;
             var user_name = "<%- user_name %>";
             var pc_list = {};
             var dataChannelList = {};
@@ -493,9 +517,7 @@
                     stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
                     await gotStream(stream);
                     videoRoomSocket = await new WebSocket(
-                        ws_or_wss
-                        + '18.183.195.124:8083'
-                        + '/'
+                        "wss://www.websocket-server.link:8083/"
                         + roomName
                         + "room"
                         + '/'
@@ -926,7 +948,7 @@
                             document.getElementById(data.id).height.baseVal.value += data.h;
                             break;
                         case "shareData":
-                            drawingData = data.data;
+                            adaptingData(data.data)
                             break;
                         case "redo":
                             var target = document.getElementById(data.id)
@@ -1212,7 +1234,7 @@
                 });
             }
 
-            function moveScreenByMouseup() {    
+            function moveScreenByMouseup() {
                 console.log("finish");
                 onDown = false;
 
@@ -1571,10 +1593,33 @@
                     logOnView(response.message, 1000, "blue")
                     return response;
                 }
-                // ajax(drawingData, apiUrl, "post", afterDrawFunc)
-                const jsonString = JSON.stringify(drawingData);
-                localStorage.setItem('sample', jsonString);
                 shareBoardData();
+            }
+
+            function getLocalStorageUsage() {
+                let totalBytes = 0;
+
+                for (const key in localStorage) {
+                    if (localStorage.hasOwnProperty(key)) {
+                        totalBytes += (key.length + localStorage[key].length) * 2; // 文字列をUTF-16として扱うために2倍する
+                    }
+                }
+
+                return totalBytes;
+            }
+
+            function getRemainingLocalStorageSpace() {
+                const maxQuota = 5 * 1024 * 1024; // 一般的な制約として5MBを使用
+
+                const currentUsage = getLocalStorageUsage();
+                const remainingSpace = maxQuota - currentUsage;
+
+                return remainingSpace;
+            }
+
+            function formatBytes(bytes) {
+                const megabytes = bytes / (1024 * 1024);
+                return megabytes.toFixed(2) + " MB";
             }
 
             function shareBoardData() {
@@ -1585,8 +1630,8 @@
                 // sendOnDatachannel(boardDataToShare);
                 // shareは容量の問題があるので、socket使う
                 roomSocket.send(JSON.stringify(boardDataToShare));
+                console.log(formatBytes(getRemainingLocalStorageSpace()))
                 drawingData = boardDataToShare.data;
-                
             }
 
             var count;
@@ -1903,15 +1948,48 @@
                 image.src = "data:image/svg+xml;charset=utf-8;base64," + btoa(unescape(encodeURIComponent(svgData)));
             }
 
+            document.getElementById("board_save").addEventListener("click", function (e) {
+                const jsonString = JSON.stringify(drawingData);
+                localStorage.setItem(roomName, jsonString);
+                var roomList = JSON.parse(localStorage.getItem("board-meet"));
+                localStorage.setItem("board-meet", JSON.stringify({}))
+                console.log(roomList)
+                console.log("roomList", roomList)
+                console.log(roomName)
+
+                var name = "<%- display_name %>"
+
+                if (roomList === null) {
+                    roomList = {};
+                }
+                var currentDate = new Date();
+                var roomData = {
+                    roomName: roomName,
+                    user_name: name,
+                    time: currentDate,
+                }
+                roomList[roomName] = roomData;
+
+                console.log(roomList)
+
+                const roomListJson = JSON.stringify(roomList);
+
+                console.log(roomListJson)
+
+                localStorage.setItem("board-meet", roomListJson)
+            })
+
 
 
 
 
             roomSocket.onmessage = function (e) {
                 const data = JSON.parse(e.data);
+                console.log(data)
                 switch (data.type) {
                     case "shareData":
-                        drawingData = data.data;
+                        // drawingData = data.data;
+                        adaptingData(data.data)
                         console.log("share");
                         break;
                     default:

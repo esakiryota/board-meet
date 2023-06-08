@@ -77,6 +77,9 @@
                         <div class="input-field col s12">
                           <input placeholder="名前" id="name" type="text" class="validate" name="token">
                         </div>
+                        <div class="input-field col s12">
+                          <input placeholder="ルーム名" id="roomName" type="text" class="validate" name="roomName">
+                        </div>
                         <div class="row">
                           <div class="col s12">
                             キー: <span id="token"><%- token %></span><br>
@@ -141,7 +144,8 @@
       document.getElementById("create_room").addEventListener('click', function () {
         var token = document.getElementById('token').textContent;
         var name = document.getElementById("name").value
-        var url = `/board/${token}?name=${name}`
+        var roomName = document.getElementById("roomName").value;
+        var url = `/board/${token}?name=${name}&roomName=${roomName}`
         window.location.href = url
       })
 
@@ -170,9 +174,27 @@
         var roomhtml = ``
         console.log(roomList)
         for (const roomName in roomList) {
-          roomhtml += `<p><a href="/board/${roomName}?name=${roomList[roomName].user_name}">${roomName}</a> user_name: ${roomList[roomName].user_name} 時間: ${roomList[roomName].time} </p>`
+          roomhtml += `<p id="${roomName}_p"><a href="/board/${roomName}?name=${roomList[roomName].user_name}&roomName=${roomList[roomName].room}">${roomList[roomName].room}</a> user_name: ${roomList[roomName].user_name} 時間: ${roomList[roomName].time}`
+          roomhtml += `<button id="${roomName}" class="delete_room">削除</button></p>`
         }
         roomElement.innerHTML = roomhtml;
+        const deleteButtons = document.getElementsByClassName('delete_room');
+        Array.from(deleteButtons).forEach(button => {
+          button.addEventListener('click', function () {
+            const roomId = button.id;
+            localStorage.removeItem(roomId);
+            var roomList = JSON.parse(localStorage.getItem("board-meet"));
+            delete roomList[roomId];
+            var roomListJson = JSON.stringify(roomList);
+            localStorage.setItem("board-meet", roomListJson)
+            console.log('localStorage のキー ' + roomId + ' を削除しました。');
+            var element = document.getElementById(roomId + '_p');
+            if (element) {
+              var parentElement = element.parentNode;
+              parentElement.removeChild(element);
+            }
+          });
+        });
       }
 
       getRoomName();

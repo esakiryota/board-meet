@@ -51,9 +51,8 @@
             <a class='pointer-type btn-floating row tooltipped blue button' href='#' data-position="right"
                 data-delay="50" data-tooltip="ダウンロード" id="board_download"><i
                     class="material-icons">file_download</i></a>
-                    <a class='pointer-type btn-floating row tooltipped blue button' href='#' data-position="right"
-                    data-delay="50" data-tooltip="ブラウザに保存" id="board_save"><i
-                        class="material-icons">save</i></a>
+            <a class='pointer-type btn-floating row tooltipped blue button' href='#' data-position="right"
+                data-delay="50" data-tooltip="ブラウザに保存" id="board_save"><i class="material-icons">save</i></a>
         </div>
         <div id="controllers" class="row" style="position: absolute; top: 20px; right: 50px;">
             <span class='pointer-type col controller' id="zoom_in"><i class="material-icons">zoom_in</i></span>
@@ -185,6 +184,7 @@
             <div style="position: absolute; bottom: 6px; left: 0px; background-color: black; color: white;"
                 id="name_<%- user_name %>"><%- display_name %></div>
             <div style="position: absolute; bottom: 0px; right: 0px;">
+                <a class="photo_button" href='#' id="photo_button_<%- user_name %>" style="color: white"><i class="material-icons">camera_alt</i></a>
                 <a class='' href='#' id="mic" style="color: white"><i class="material-icons">mic_off</i></a>
                 <a class='' href='#' id="switch_video" style="color: white"><i class="material-icons">videocam</i></a>
                 <a class='' href='#' id="visibility_<%- user_name %>" style="color: white" class="visible"><i
@@ -200,6 +200,7 @@
         </div>
     </div>
     <div id="selector"></div>
+    <canvas id="takePhotoCanvas"></canvas>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
     <script>
         $(function () {
@@ -477,7 +478,10 @@
 
             var user_name = "<%- user_name %>";
             var pc_list = {};
+            var name_list = {};
             var dataChannelList = {};
+            var imageCaptureList = {};
+            var imageCapture;
             var remoteStream;
             var localStream;
             var dummy_stream = new MediaStream();
@@ -488,6 +492,7 @@
                     { "urls": "stun:stun.l.google.com:19302" }
                 ]
             };
+            var display_name = "<%- display_name %>"
             console.log(user_name)
             var visibility = document.getElementById("visibility_" + user_name)
             visibility.addEventListener("click", function () {
@@ -545,9 +550,59 @@
             async function gotStream(stream) {
                 console.log('Adding local stream.');
                 var audio_track = stream.getAudioTracks()[0];
+                var video_track = stream.getVideoTracks()[0];
+                imageCapture = new ImageCapture(video_track);
+                imageCaptureList[user_name] = imageCapture;
+                captureSnapShot()
                 audio_track.enabled = false;
                 localStream = stream;
                 localVideo.srcObject = stream;
+            }
+
+            function onTakePhotoButtonClick(captureName) {
+                console.log(imageCaptureList)
+                console.log(captureName)
+                console.log(imageCaptureList[captureName])
+                imageCaptureList[captureName].takePhoto()
+                    .then(blob => createImageBitmap(blob))
+                    .then(imageBitmap => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = imageBitmap.width;
+                        canvas.height = imageBitmap.height;
+                        ctx.drawImage(imageBitmap, 0, 0);
+                        const dataURL = canvas.toDataURL();
+                        var id = Math.random().toString(32).substring(2);
+                        createImage(0, 0, 200, 200, 200, 100, dataURL, id);
+                        var saveImageData = {}
+                        saveImageData.href = dataURL;
+                        saveImageData.id = id;
+                        saveImageData.type = "image";
+                        saveImageData.x = 200;
+                        saveImageData.y = 200;
+                        saveImageData.width = 200;
+                        saveImageData.height = 100;
+                        saveImageData.cx = 0;
+                        saveImageData.cy = 0;
+                        drawingData[id] = saveImageData;
+                        saveBoardData();
+                        shareBoardData();
+                    })
+                    .catch(error => ChromeSamples.log(error));
+            }
+
+            function captureSnapShot() {
+                const photoButtons = document.getElementsByClassName('photo_button');
+
+                // 各ボタンに対してクリックイベントリスナーを追加
+                Array.from(photoButtons).forEach(button => {
+                    button.addEventListener('click', function () {
+                        const id = button.id;
+                        const idArray = id.split('_');
+                        const lastElement = idArray[idArray.length - 1];
+                        onTakePhotoButtonClick(lastElement);
+                    });
+                });
             }
 
             var joinFlag = false;
@@ -619,7 +674,8 @@
                         if (joinFlag) {
                             await videoRoomSocket.send(JSON.stringify({
                                 "type": "join",
-                                "user_name": user_name
+                                "user_name": user_name,
+                                "display_name": display_name,
                             }))
                             joinFlag = false;
                         }
@@ -633,29 +689,29 @@
                     }
 
                     if (data.type == "join") {
-                        console.log("join?");
-                        console.log(data.user_name)
-                        console.log(user_name)
                         if (data.user_name !== user_name) {
                             console.log("join!");
                             await videoRoomSocket.send(JSON.stringify({
                                 "type": "hello",
                                 "to": data.user_name,
-                                "from": user_name
+                                "from": user_name,
+                                "display_name": display_name
                             }));
+                            name_list[data.user_name] = data.display_name;
                             return;
                         }
+
                         return
                     }
                     if (data.type == "hello") {
                         if (data.to == user_name) {
+                            name_list[data.from] = data.display_name;
                             createPeerConnection(data.from);
                             doCall(data.from, data.to, pc_list[data.from]);
                             console.log("start from: ", user_name);
                         } else {
                             console.log(user_name)
                             if (data.from == user_name) {
-
                                 createPeerConnection(data.to);
                                 recieveDataChannel(pc_list[data.to], data.to)
                                 console.log("recieve: ", user_name);
@@ -756,6 +812,9 @@
                     pc_list[name] = pc;
                     var video_track = localStream.getVideoTracks()[0];
                     var audio_track = localStream.getAudioTracks()[0];
+                    var imageCaptureRemote = new ImageCapture(video_track);
+                    imageCaptureList[name] = imageCaptureRemote;
+                    captureSnapShot()
                     console.log("local stream: ", localStream.getTracks());
                     pc.addTrack(video_track, localStream);
                     pc.addTrack(audio_track, localStream);
@@ -811,13 +870,21 @@
                 remoteVideoName.style.left = "0px"
                 remoteVideoName.style.backgroundColor = "black"
                 remoteVideoName.style.color = "white"
-                remoteVideoName.textContent = name;
+                remoteVideoName.textContent = name_list[name];
                 remoteVideoVisibleDiv = document.createElement("div");
                 remoteVideoVisibleDiv.setAttribute("id", "visible_" + name)
                 remoteVideoVisibleDiv.style.position = "absolute"
                 remoteVideoVisibleDiv.style.bottom = "0px"
                 remoteVideoVisibleDiv.style.right = "0px"
                 remoteVideoVisibleDiv.innerHTML = `<span class='' href='#' id="visibility_${name}" style="color: white" class="visible"><i class="material-icons">visibility_off</i></span>`
+                remoteVideoInvisibleDiv = document.createElement("div");
+                remoteVideoPhotoDiv = document.createElement("div");
+                remoteVideoPhotoDiv.setAttribute("id", "photo_button_" + name)
+                remoteVideoPhotoDiv.setAttribute("class", "photo_button")
+                remoteVideoPhotoDiv.style.position = "absolute"
+                remoteVideoPhotoDiv.style.bottom = "0px"
+                remoteVideoPhotoDiv.style.right = "30px"
+                remoteVideoPhotoDiv.innerHTML = `<span class='' href='#' style="color: white" class="visible"><i class="material-icons">camera_alt</i></span>`
                 remoteVideoInvisibleDiv = document.createElement("div");
                 remoteVideoInvisibleDiv.setAttribute("id", "invisible_" + name)
                 remoteVideoInvisibleDiv.style.position = "relative"
@@ -830,6 +897,7 @@
                 remoteVideoDiv.appendChild(remoteVideo)
                 remoteVideoDiv.appendChild(remoteVideoName)
                 remoteVideoDiv.appendChild(remoteVideoVisibleDiv)
+                remoteVideoDiv.appendChild(remoteVideoPhotoDiv)
                 remoteVideoDiv.appendChild(remoteVideoInvisibleDiv)
                 videos.appendChild(remoteVideoDiv);
                 remoteVideo = document.getElementById(name);
@@ -851,6 +919,7 @@
                     document.getElementById("visible_" + name).style.display = ""
                     document.getElementById("invisible_" + name).style.display = "none"
                 })
+                captureSnapShot()
 
             }
 
@@ -1950,12 +2019,10 @@
 
             document.getElementById("board_save").addEventListener("click", function (e) {
                 const jsonString = JSON.stringify(drawingData);
+                console.log(drawingData)
                 localStorage.setItem(roomName, jsonString);
                 var roomList = JSON.parse(localStorage.getItem("board-meet"));
                 localStorage.setItem("board-meet", JSON.stringify({}))
-                console.log(roomList)
-                console.log("roomList", roomList)
-                console.log(roomName)
 
                 var name = "<%- display_name %>"
 
@@ -1965,6 +2032,7 @@
                 var currentDate = new Date();
                 var roomData = {
                     roomName: roomName,
+                    room: "<%- roomName %>",
                     user_name: name,
                     time: currentDate,
                 }
@@ -1988,7 +2056,6 @@
                 console.log(data)
                 switch (data.type) {
                     case "shareData":
-                        // drawingData = data.data;
                         adaptingData(data.data)
                         console.log("share");
                         break;
@@ -2008,8 +2075,6 @@
                 rect.style.position = "fixed";
                 rect.style.top = y - 50 + "px";
                 rect.style.left = "100px";
-                // rect.style.width = "100px";
-                // rect.style.height = "100px";
                 rect.style.backgroundColor = "white";
                 rect.style.borderRadius = "10px";
                 rect.style.border = "solid grey"

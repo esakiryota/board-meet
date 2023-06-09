@@ -1825,7 +1825,6 @@
                             var count = Math.floor(len / 64000);
                             console.log("---------");
                             saveImageData.count = count;
-                            sendOnDatachannel(sendImageData);
                             sendImageDataChunk(64000, href, id)
                         }
                         image.src = reader.result;
@@ -1958,6 +1957,7 @@
             }
 
             function sendOnDatachannel(data) {
+                console.log(data)
                 if (!isEmpty(dataChannelList)) {
                     for (let user_name in dataChannelList) {
                         dataChannelList[user_name].send(JSON.stringify(data));

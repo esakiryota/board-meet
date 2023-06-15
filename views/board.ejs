@@ -481,9 +481,7 @@
             var pc_list = {};
             var name_list = {};
             var dataChannelList = {};
-            var imageCaptureList = {};
             var videoList = {};
-            var imageCapture;
             var remoteStream;
             var localStream;
             var dummy_stream = new MediaStream();
@@ -553,8 +551,6 @@
                 console.log('Adding local stream.');
                 var audio_track = stream.getAudioTracks()[0];
                 var video_track = stream.getVideoTracks()[0];
-                imageCapture = new ImageCapture(video_track);
-                imageCaptureList[user_name] = imageCapture;
                 audio_track.enabled = false;
                 localStream = stream;
                 localVideo.srcObject = stream;
@@ -838,8 +834,6 @@
                 console.log('Remote stream added.');
                 console.log('stream: ', stream.getTracks());
                 var video_track = stream.getVideoTracks()[0];
-                var imageCaptureRemote = new ImageCapture(video_track);
-                imageCaptureList[name] = imageCaptureRemote;
 
                 remoteVideo = document.createElement("video");
                 remoteVideo.autoplay = true;

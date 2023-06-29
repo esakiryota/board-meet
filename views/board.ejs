@@ -581,10 +581,10 @@
                 saveBoardData();
                 shareBoardData();
             }
-                document.getElementById("photo_button_<%- user_name %>").addEventListener('click', function () {
-                    const id = "<%- user_name %>"
-                    onTakePhotoButtonClick(id);
-                });
+            document.getElementById("photo_button_<%- user_name %>").addEventListener('click', function () {
+                const id = "<%- user_name %>"
+                onTakePhotoButtonClick(id);
+            });
 
             var joinFlag = false;
 
@@ -1118,6 +1118,8 @@
             //初期設定
 
             var input = document.createElement("input");
+            var caret = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            svgElm.append(caret);
             input.id = "textToolInput";
             input.type = "text";
             input.setAttribute("autocomplete", "off");
@@ -1482,13 +1484,17 @@
                 document.getElementById('board').appendChild(input);
                 input.value = "";
                 input.style.left = input_x + 'px';
-                input.style.top = input_y + 'px';
+                input.style.top = '-1000px';
                 input.style.position = 'fixed';
                 input.focus();
                 id = Math.random().toString(32).substring(2);
                 var x = parseInt(getPositionXOnSvg(event));
                 var y = parseInt(getPositionYOnSvg(event));
+                var caret_x = parseInt(getPositionXOnSvg(event));
+                var caret_y = parseInt(getPositionYOnSvg(event));
                 createTextBox(x, y, 0, 0, id, text);
+                console.log("init", x, y)
+                moveCaret(caret_x, caret_y);
                 sendTextBoxData.cx = x;
                 sendTextBoxData.cy = y;
                 sendTextBoxData.x = 0;
@@ -1510,9 +1516,10 @@
                             "id": id,
                             "text": input.value
                         }
-                        // roomSocket.send(JSON.stringify(sendTextData));
                         sendOnDatachannel(sendTextData);
                         document.getElementById(sendTextData.id).textContent = sendTextData.text;
+                        console.log(document.getElementById(sendTextData.id).getAttribute('x'))
+                        moveCaret(parseInt(document.getElementById(sendTextData.id).getAttribute('x')) + document.getElementById(sendTextData.id).getBBox().width + 5, parseInt(document.getElementById(sendTextData.id).getAttribute('y')));
                         curText = input.value;
                         saveBoardData();
                     }
@@ -1520,14 +1527,13 @@
                 input.addEventListener("blur", function () {
                     input.removeEventListener("keyup", function () { })
                     input.style.top = '-1000px';
+                    moveCaret(0, -1000);
                 })
                 input.addEventListener("keypress", function (e) {
                     if (e.keyCode === 13) {
                         input_y += parseInt(drawCondition.text.size);
-                        input.style.top = input_y + 'px';
                         id = Math.random().toString(32).substring(2);
                         y += parseInt(drawCondition.text.size);
-                        console.log(y);
                         createTextBox(x, y, 0, 0, id, text);
 
                         sendTextBoxData.cx = x;
@@ -1926,8 +1932,37 @@
                 var Matrix = text_box.transform.baseVal[0].matrix;
                 Matrix.e += x;
                 Matrix.f += y;
+
                 svgElm.append(text_box);
             }
+
+            function moveCaret(cx, cy) {
+                caret.setAttribute("x1", cx);
+                caret.setAttribute("y1", cy - drawCondition.text.size);
+                caret.setAttribute("x2", cx);
+                caret.setAttribute("y2", cy);
+                caret.setAttribute("stroke", "black");
+                caret.setAttribute("stroke-width", "2");
+                caret.setAttribute("id", "blinking-line");
+                caret.setAttribute("class", "blinking");
+            }
+
+            caret.setAttribute('visibility', "hidden")
+
+            function toggleVisibility() {
+                var blinkingLine = document.getElementById("blinking-line");
+                if (blinkingLine.getAttribute("visibility") === "hidden") {
+                    blinkingLine.setAttribute("visibility", "visible");
+                } else {
+                    blinkingLine.setAttribute("visibility", "hidden");
+                }
+            }
+
+            function startBlinking() {
+                setInterval(toggleVisibility, 750); // 500ミリ秒ごとに可視性を切り替える
+            }
+
+            startBlinking()
 
 
             function createRect(cx, cy, w, h, elm, id, fill, stroke, stroke_width) {

@@ -530,7 +530,7 @@
                     var request = objectStore.get(roomName)
                     request.onsuccess = function (event) {
                         var data = event.target.result.data;
-                    if (data === null || data === undefined) {
+                        if (data === null || data === undefined) {
                             drawingData = {};
                         } else {
                             drawingData = data;
@@ -574,7 +574,12 @@
             var videoRoomSocket;
             let pc_config = {
                 "iceServers": [
-                    { "urls": "stun:www.websocket-server.link:3478" }
+                    { "urls": "stun:www.websocket-server.link:3478" },
+                    {
+                        "urls": "turn:www.websocket-server.link:3478",
+                        "username": "test",
+                        "credential": "2a6f543d28359bd929ce7b141fb12a4360"
+                    }
                 ]
             };
             var display_name = "<%- display_name %>"

@@ -228,13 +228,11 @@
             });
 
             document.getElementById("name_<%- user_name %>").addEventListener("click", function () {
-                console.log("click")
                 makeEditable(document.getElementById("name_<%- user_name %>"))
             })
 
             function makeEditable(element) {
                 // 既存のテキストを取得
-                console.log("click")
                 var text = element.textContent;
 
                 // テキストを入力フィールドに置き換え
@@ -251,9 +249,6 @@
                 inputField.addEventListener('keydown', function (event) {
                     if (event.key === 'Enter') {
                         element.textContent = this.value;
-                        // console.log(this)
-                        // console.log(this.parentNode);
-                        // this.parentNode.removeChild(this);
                         var sendData = {
                             "type": "changeName",
                             "id": "name_<%- user_name %>",
@@ -325,8 +320,6 @@
             browserDrawData = {};
             id = "";
             old_id = "";
-
-            console.log("drawingData", drawingData)
 
             function zoomAction() {
 
@@ -448,7 +441,6 @@
             );
 
             function drawData(value) {
-                console.log(value)
                 var draw_type = value.type
                 var key = value.id;
                 switch (draw_type) {
@@ -513,18 +505,45 @@
                 }
             }
 
+            var objectStore;
+            var roomDataObjectStore;
+            var db;
+
             function loadRoom() {
-                const sampleJson = JSON.parse(localStorage.getItem(roomName));
-                if (sampleJson !== null) {
-                    drawingData = sampleJson;
-                }
-                defultDraw(sampleJson)
+                var request = indexedDB.open('myDatabase', 4); // データベース名とバージョンを指定
+                request.onerror = function (event) {
+                    console.log("error");
+                };
+                request.onupgradeneeded = function (event) {
+                    db = event.target.result;
+                    if (!db.objectStoreNames.contains("roomData")) {
+                        roomDataObjectStore = db.createObjectStore("roomData", { keyPath: "id" });
+                    }
+                    // オブジェクトストアの作成
+                };
+                request.onsuccess = function (event) {
+                    db = event.target.result;
+                    var transaction = db.transaction(["roomData"], 'readwrite');
+                    var objectStore = transaction.objectStore("roomData");
+
+
+                    var request = objectStore.get(roomName)
+                    request.onsuccess = function (event) {
+                        var data = event.target.result.data;
+                    if (data === null || data === undefined) {
+                            drawingData = {};
+                        } else {
+                            drawingData = data;
+                        }
+                        defultDraw(data)
+                    };
+                };
+
             }
 
             loadRoom()
 
             function adaptingData(data) {
-                console.log(drawingData)
                 for (const key_data in data) {
                     var flag = false;
                     for (const key_drawingData in drawingData) {
@@ -533,7 +552,6 @@
                         }
                     }
                     if (!flag) {
-                        console.log(data[key_data])
                         drawingData[key_data] = data[key_data];
                         drawData(data[key_data]);
                     }
@@ -556,14 +574,12 @@
             var videoRoomSocket;
             let pc_config = {
                 "iceServers": [
-                    { "urls": "stun:stun.l.google.com:19302" }
+                    { "urls": "stun:www.websocket-server.link:3478" }
                 ]
             };
             var display_name = "<%- display_name %>"
-            console.log(user_name)
             var visibility = document.getElementById("visibility_" + user_name)
             visibility.addEventListener("click", function () {
-                console.log("click");
                 document.getElementById("localVideo").style.display = "none"
                 document.getElementById("name_" + user_name).style.display = "none"
                 document.getElementById("visibility_" + user_name).style.display = "none"
@@ -573,7 +589,6 @@
             })
             var invisibility = document.getElementById("invisible_" + user_name)
             invisibility.addEventListener("click", function () {
-                console.log("click");
                 document.getElementById("localVideo").style.display = ""
                 document.getElementById("name_" + user_name).style.display = ""
                 document.getElementById("visibility_" + user_name).style.display = ""
@@ -594,7 +609,6 @@
                         + "room"
                         + '/'
                     );
-                    console.log("startConnection")
                     await startConnection();
                 } catch (e) {
                     console.log('startInOrder() error: ' + e.message);
@@ -615,7 +629,6 @@
             }
 
             async function gotStream(stream) {
-                console.log('Adding local stream.');
                 var audio_track = stream.getAudioTracks()[0];
                 var video_track = stream.getVideoTracks()[0];
                 audio_track.enabled = false;
@@ -659,7 +672,6 @@
                 return new Promise((resolve, reject) => {
                     videoRoomSocket.onopen = () => {
                         joinFlag = true;
-                        console.log("open")
                         resolve(videoRoomSocket);
                     };
                     videoRoomSocket.onerror = (error) => {
@@ -670,7 +682,6 @@
 
             async function startConnection() {
                 const socket = await connectWebSocket();
-                console.log(socket)
                 await setMessage();
             }
 
@@ -718,8 +729,6 @@
                 videoRoomSocket.onmessage = async function (e) {
                     const data = JSON.parse(e.data);
 
-                    console.log(data)
-
                     if (data.type === "subscribe") {
                         if (joinFlag) {
                             await videoRoomSocket.send(JSON.stringify({
@@ -760,7 +769,6 @@
                             doCall(data.from, data.to, pc_list[data.from]);
                             console.log("start from: ", user_name);
                         } else {
-                            console.log(user_name)
                             if (data.from == user_name) {
                                 createPeerConnection(data.to);
                                 recieveDataChannel(pc_list[data.to], data.to)
@@ -780,7 +788,6 @@
 
                     } else if (data.type === 'answer') {
                         if (data.to == user_name) {
-                            console.log("recieved answer");
                             pc_list[data.from].setRemoteDescription(new RTCSessionDescription(data.message));
                         }
                     } else if (data.type === 'candidate') {
@@ -802,7 +809,6 @@
 
             function recieveDataChannel(pc, name) {
                 pc.ondatachannel = function (event) {
-                    console.log('ondatachannel:', event.channel);
                     dataChannelList[name] = event.channel;
                     onDataChannelCreated(dataChannelList[name], user_name, name);
                 };
@@ -844,7 +850,6 @@
                     pc.addEventListener('iceconnectionstatechange', () => {
                         pc.iceConnectionState;
                         if (pc.iceConnectionState == "disconnected" || pc.iceConnectionState == "failed") {
-                            console.log(`${name} connection: `, pc.iceConnectionState);
                             logOnView(`${getUserNameByToken(name)} との接続が切れました`, 4000, "orange")
                             delete dataChannelList[name]
                             stop(name);
@@ -854,7 +859,6 @@
                         }
                         console.log(`${name} connection: `, pc.iceConnectionState);
                     });
-                    console.log('signalingstate: ', pc.signalingState);
                     pc.addEventListener('signalingstatechange', () => {
                         console.log('signalingstate: ', pc.signalingState);
                         signalingState = pc.signalingState;
@@ -862,12 +866,9 @@
                     pc_list[name] = pc;
                     var video_track = localStream.getVideoTracks()[0];
                     var audio_track = localStream.getAudioTracks()[0];
-                    console.log("local stream: ", localStream.getTracks());
                     pc.addTrack(video_track, localStream);
                     pc.addTrack(audio_track, localStream);
-                    console.log('Created RTCPeerConnnection');
                 } catch (e) {
-                    console.log('Failed to create PeerConnection, exception: ' + e.message);
                     logOnView(`接続できません。: ${e.message}`, 10000, "red")
                     return;
                 }
@@ -886,9 +887,7 @@
             }
 
             function doCall(to, from, pc) {
-                console.log('Sending offer to peer');
                 dataChannelList[to] = pc.createDataChannel('test');
-                console.log("create dataChannel");
                 onDataChannelCreated(dataChannelList[to], from, to);
                 pc.createOffer().then(function (sessionDescription) {
                     pc.setLocalDescription(sessionDescription);
@@ -898,15 +897,12 @@
             }
 
             function handleRemoteStreamAdded(stream, name) {
-                console.log('Remote stream added.');
-                console.log('stream: ', stream.getTracks());
                 var video_track = stream.getVideoTracks()[0];
 
                 remoteVideo = document.createElement("video");
                 remoteVideo.autoplay = true;
                 remoteVideo.playsinline = true;
                 remoteVideo.muted = false;
-                console.log(name)
                 remoteVideo.setAttribute("id", name)
                 remoteVideo.setAttribute("class", "z-depth-5")
                 remoteVideoDiv = document.createElement("div");
@@ -955,16 +951,12 @@
                 remoteStream = stream;
                 remoteVideo.srcObject = remoteStream;
                 remoteVideoVisibleDiv.addEventListener("click", function () {
-                    console.log("click");
-                    console.log(remoteVideoDiv.style.display);
                     document.getElementById(name).style.display = "none"
                     document.getElementById("name_" + name).style.display = "none"
                     document.getElementById("visible_" + name).style.display = "none"
                     document.getElementById("invisible_" + name).style.display = ""
                 })
                 remoteVideoInvisibleDiv.addEventListener("click", function () {
-                    console.log("click");
-                    console.log(remoteVideoDiv.style.display);
                     document.getElementById(name).style.display = ""
                     document.getElementById("name_" + name).style.display = ""
                     document.getElementById("visible_" + name).style.display = ""
@@ -980,8 +972,6 @@
                 console.log('onDataChannelCreated:', channel);
 
                 channel.onopen = function () {
-                    console.log('CHANNEL opened!!!');
-                    //  logOnView("CHANNEL opened!!!", 4000, "blue")
                     logOnView("ボードのデータが共有されました", 4000, "blue")
                     shareBoardData()
                     var user = JSON.parse("<%- user %>");
@@ -994,13 +984,11 @@
                 };
 
                 channel.onclose = function () {
-                    console.log('Channel closed.');
                     delete dataChannelList[channel_name]
                     logOnView("接続が切れました", 4000, "red")
                 }
 
                 channel.onmessage = function (e) {
-                    console.log('recieve message');
                     const data = JSON.parse(e.data);
                     var svgElm = $("#drawingCanvas")
                     switch (data.type) {
@@ -1708,7 +1696,7 @@
             }
 
             function pencilByMouseup() {
-                browserDrawData["d"] = linetoStr
+                browserDrawData["d"] = linetoStr;
                 drawingData[id] = browserDrawData;
                 $("#drawingCanvas").off(move_event); //pathの描画を終了
                 $("#drawingCanvas").off(out_event);
@@ -1727,27 +1715,6 @@
                 shareBoardData();
             }
 
-            function getLocalStorageUsage() {
-                let totalBytes = 0;
-
-                for (const key in localStorage) {
-                    if (localStorage.hasOwnProperty(key)) {
-                        totalBytes += (key.length + localStorage[key].length) * 2; // 文字列をUTF-16として扱うために2倍する
-                    }
-                }
-
-                return totalBytes;
-            }
-
-            function getRemainingLocalStorageSpace() {
-                const maxQuota = 5 * 1024 * 1024; // 一般的な制約として5MBを使用
-
-                const currentUsage = getLocalStorageUsage();
-                const remainingSpace = maxQuota - currentUsage;
-
-                return remainingSpace;
-            }
-
             function formatBytes(bytes) {
                 const megabytes = bytes / (1024 * 1024);
                 return megabytes.toFixed(2) + " MB";
@@ -1761,7 +1728,6 @@
                 // sendOnDatachannel(boardDataToShare);
                 // shareは容量の問題があるので、socket使う
                 roomSocket.send(JSON.stringify(boardDataToShare));
-                console.log(formatBytes(getRemainingLocalStorageSpace()))
                 drawingData = boardDataToShare.data;
             }
 
@@ -2057,7 +2023,6 @@
             }
 
             function sendOnDatachannel(data) {
-                console.log(data)
                 if (!isEmpty(dataChannelList)) {
                     for (let user_name in dataChannelList) {
                         dataChannelList[user_name].send(JSON.stringify(data));
@@ -2110,32 +2075,25 @@
 
             document.getElementById("board_save").addEventListener("click", function (e) {
                 const jsonString = JSON.stringify(drawingData);
-                console.log(drawingData)
-                localStorage.setItem(roomName, jsonString);
-                var roomList = JSON.parse(localStorage.getItem("board-meet"));
-                localStorage.setItem("board-meet", JSON.stringify({}))
+                var data = drawingData;
 
                 var name = "<%- display_name %>"
-
-                if (roomList === null) {
-                    roomList = {};
-                }
                 var currentDate = new Date();
                 var roomData = {
+                    id: roomName,
                     roomName: roomName,
                     room: "<%- roomName %>",
+                    data: data,
                     user_name: name,
                     time: currentDate,
                 }
-                roomList[roomName] = roomData;
+                var transaction = db.transaction(["roomData"], 'readwrite');
+                var objectStore = transaction.objectStore("roomData");
+                var roomDataRequest = objectStore.put(roomData);
 
-                console.log(roomList)
-
-                const roomListJson = JSON.stringify(roomList);
-
-                console.log(roomListJson)
-
-                localStorage.setItem("board-meet", roomListJson)
+                roomDataRequest.onsuccess = function (event) {
+                    console.log(event.target.result);
+                };
             })
 
 
@@ -2144,7 +2102,6 @@
 
             roomSocket.onmessage = function (e) {
                 const data = JSON.parse(e.data);
-                console.log(data)
                 switch (data.type) {
                     case "shareData":
                         adaptingData(data.data)

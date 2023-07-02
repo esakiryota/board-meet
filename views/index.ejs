@@ -139,45 +139,47 @@
         window.location.href = url
       })
 
-      function getLocalStorageKeys() {
-        const keys = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          keys.push(localStorage.key(i));
-        }
-        return keys;
-      }
-
-      // 使用例
-      const localStorageKeys = getLocalStorageKeys();
-      console.log(localStorageKeys);
 
       function getRoomName() {
-        var roomList = JSON.parse(localStorage.getItem("board-meet"));
-        var roomElement = document.getElementById('roomList')
-        var roomhtml = ``
-        console.log(roomList)
-        for (const roomName in roomList) {
-          roomhtml += `<p id="${roomName}_p"><a href="/board/${roomName}?name=${roomList[roomName].user_name}&roomName=${roomList[roomName].room}">${roomList[roomName].room}</a> user_name: ${roomList[roomName].user_name} 時間: ${roomList[roomName].time}`
-          roomhtml += `<button id="${roomName}" class="delete_room">削除</button></p>`
-        }
-        roomElement.innerHTML = roomhtml;
-        const deleteButtons = document.getElementsByClassName('delete_room');
-        Array.from(deleteButtons).forEach(button => {
-          button.addEventListener('click', function () {
-            const roomId = button.id;
-            localStorage.removeItem(roomId);
-            var roomList = JSON.parse(localStorage.getItem("board-meet"));
-            delete roomList[roomId];
-            var roomListJson = JSON.stringify(roomList);
-            localStorage.setItem("board-meet", roomListJson)
-            console.log('localStorage のキー ' + roomId + ' を削除しました。');
-            var element = document.getElementById(roomId + '_p');
-            if (element) {
-              var parentElement = element.parentNode;
-              parentElement.removeChild(element);
+        var request = indexedDB.open('myDatabase', 4);
+
+        request.onsuccess = function (event) {
+          db = event.target.result;
+          var transaction = db.transaction(["roomData"], 'readwrite');
+          var objectStore = transaction.objectStore("roomData");
+          var roomElement = document.getElementById('roomList');
+          var roomhtml = ``
+
+          var request = objectStore.getAll();
+          request.onsuccess = function (event) {
+            var roomList = event.target.result;
+            for (let i = 0; i < roomList.length; i++) {
+              roomhtml += `<p id="${roomList[i].id}_p"><a href="/board/${roomList[i].id}?name=${roomList[i].user_name}&roomName=${roomList[i].room}">${roomList[i].room}</a> user_name: ${roomList[i].user_name} 時間: ${roomList[i].time}`
+              roomhtml += `<button id="${roomList[i].id}" class="delete_room">削除</button></p>`
             }
-          });
-        });
+            roomElement.innerHTML = roomhtml;
+            const deleteButtons = document.getElementsByClassName('delete_room');
+            console.log(deleteButtons)
+            Array.from(deleteButtons).forEach(button => {
+              // console.log(button)
+              button.addEventListener('click', function () {
+                console.log("click")
+                const roomId = button.id;
+                var transaction = db.transaction(["roomData"], 'readwrite');
+                var objectStore = transaction.objectStore("roomData");
+                var deleteRequest = objectStore.delete(roomId)
+                deleteRequest.onsuccess = function (event) {
+                  var element = document.getElementById(roomId + '_p');
+                  if (element) {
+                    var parentElement = element.parentNode;
+                    parentElement.removeChild(element);
+                  }
+                };
+              });
+            });
+          }
+        };
+
       }
 
       getRoomName();

@@ -258,13 +258,6 @@
                     }
                 });
 
-
-
-                // inputField.addEventListener("blur", function () {
-                //     element.textContent = this.value;
-                //     this.parentNode.removeChild(this);
-                // }, true)
-
                 element.textContent = '';
                 element.appendChild(inputField);
 
@@ -523,6 +516,9 @@
                 };
                 request.onsuccess = function (event) {
                     db = event.target.result;
+                    if (!db.objectStoreNames.contains("roomData")) {
+                        roomDataObjectStore = db.createObjectStore("roomData", { keyPath: "id" });
+                    }
                     var transaction = db.transaction(["roomData"], 'readwrite');
                     var objectStore = transaction.objectStore("roomData");
 
